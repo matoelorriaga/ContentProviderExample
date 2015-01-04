@@ -20,11 +20,11 @@ public class TodoDatabaseHelper extends SQLiteOpenHelper {
         // database create statement
         private static final String DATABASE_CREATE = String.format(
                 "CREATE TABLE %s (" +
-                        "%s INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                        "%s TEXT NOT NULL, " +
-                        "%s TEXT NOT NULL, " +
-                        "%s TEXT NOT NULL" +
-                        ");",
+                    "%s INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    "%s TEXT NOT NULL, " +
+                    "%s TEXT NOT NULL, " +
+                    "%s TEXT NOT NULL" +
+                ");",
                 TABLE_TODO,
                 COLUMN_ID,
                 COLUMN_CATEGORY,

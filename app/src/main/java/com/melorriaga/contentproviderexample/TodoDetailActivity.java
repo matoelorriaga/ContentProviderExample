@@ -1,7 +1,5 @@
 package com.melorriaga.contentproviderexample;
 
-import android.content.ContentValues;
-import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
 import android.view.Menu;
@@ -10,10 +8,6 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Spinner;
-import android.widget.Toast;
-
-import com.melorriaga.contentproviderexample.contentprovider.TodoContentProvider;
-import com.melorriaga.contentproviderexample.database.TodoDatabaseHelper;
 
 public class TodoDetailActivity extends ActionBarActivity {
 
@@ -22,8 +16,6 @@ public class TodoDetailActivity extends ActionBarActivity {
     private EditText descriptionEditText;
 
     private Button button;
-
-    private Uri todoUri;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,29 +30,9 @@ public class TodoDetailActivity extends ActionBarActivity {
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                saveTodo();
+
             }
         });
-    }
-
-    private void saveTodo() {
-        String category = (String) categorySpinner.getSelectedItem();
-        String summary = summaryEditText.getText().toString();
-        String description = descriptionEditText.getText().toString();
-
-        if (summary.length() != 0 && description.length() != 0) {
-
-            ContentValues values = new ContentValues();
-            values.put(TodoDatabaseHelper.TodoTable.COLUMN_CATEGORY, category);
-            values.put(TodoDatabaseHelper.TodoTable.COLUMN_SUMMARY, summary);
-            values.put(TodoDatabaseHelper.TodoTable.COLUMN_DESCRIPTION, description);
-
-            getContentResolver().insert(TodoContentProvider.CONTENT_URI, values);
-
-            finish();
-        } else {
-            Toast.makeText(this, "Fill the fields", Toast.LENGTH_SHORT).show();
-        }
     }
 
     @Override

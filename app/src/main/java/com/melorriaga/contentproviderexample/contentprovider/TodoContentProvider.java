@@ -140,6 +140,7 @@ public class TodoContentProvider extends ContentProvider {
 
         getContext().getContentResolver().notifyChange(uri, null);
 
+        // return the number of deleted rows
         return rowsDeleted;
     }
 
@@ -176,6 +177,7 @@ public class TodoContentProvider extends ContentProvider {
 
         getContext().getContentResolver().notifyChange(uri, null);
 
+        // return the number of updated rows
         return rowsUpdated;
     }
 

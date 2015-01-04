@@ -17,7 +17,7 @@ public class TodoDetailActivity extends ActionBarActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.todo_detail_menu, menu);
-        return true;
+        return false;
     }
 
     @Override

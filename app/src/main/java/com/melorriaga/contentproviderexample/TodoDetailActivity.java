@@ -20,8 +20,6 @@ public class TodoDetailActivity extends ActionBarActivity {
     private EditText summaryEditText;
     private EditText descriptionEditText;
 
-    private Button button;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -31,7 +29,7 @@ public class TodoDetailActivity extends ActionBarActivity {
         summaryEditText = (EditText) findViewById(R.id.todo_summary);
         descriptionEditText = (EditText) findViewById(R.id.todo_description);
 
-        button = (Button) findViewById(R.id.todo_save_or_update_button);
+        Button button = (Button) findViewById(R.id.todo_save_or_update_button);
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {

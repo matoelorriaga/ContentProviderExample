@@ -80,9 +80,8 @@ public class TodosListActivity extends ActionBarActivity
                 TodoDatabaseHelper.TodoTable.COLUMN_ID,
                 TodoDatabaseHelper.TodoTable.COLUMN_SUMMARY
         };
-        CursorLoader cursorLoader = new CursorLoader(this,
-                TodoContentProvider.CONTENT_URI, projection, null, null, null);
-        return cursorLoader;
+        return new CursorLoader(this, TodoContentProvider.CONTENT_URI,
+                projection, null, null, null);
     }
 
     @Override

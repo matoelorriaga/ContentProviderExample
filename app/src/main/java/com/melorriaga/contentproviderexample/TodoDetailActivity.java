@@ -56,6 +56,9 @@ public class TodoDetailActivity extends ActionBarActivity {
                 }
             }
         });
+        if (todoUri != null) {
+            button.setText(R.string.todo_update_button);
+        }
     }
 
     private void loadTodoData(Uri todoUri) {

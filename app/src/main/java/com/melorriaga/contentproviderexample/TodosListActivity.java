@@ -5,10 +5,14 @@ import android.content.CursorLoader;
 import android.content.Intent;
 import android.content.Loader;
 import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
+import android.view.ContextMenu;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
 
@@ -27,8 +31,25 @@ public class TodosListActivity extends ActionBarActivity
         setContentView(R.layout.todos_list_activity);
 
         listView = (ListView) findViewById(R.id.todo_list);
+        registerForContextMenu(listView);
 
         loadData();
+    }
+
+    @Override
+    public void onCreateContextMenu(ContextMenu menu, View v,
+                                    ContextMenu.ContextMenuInfo menuInfo) {
+        super.onCreateContextMenu(menu, v, menuInfo);
+        menu.add(R.string.todo_delete_menu_option);
+    }
+
+    @Override
+    public boolean onContextItemSelected(MenuItem item) {
+        AdapterView.AdapterContextMenuInfo menuInfo =
+                (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
+        Uri todoUri = Uri.parse(TodoContentProvider.CONTENT_URI + "/" + menuInfo.id);
+        getContentResolver().delete(todoUri, null, null);
+        return true;
     }
 
     private void loadData() {
@@ -44,6 +65,19 @@ public class TodosListActivity extends ActionBarActivity
                 R.layout.todo_list_item, null, fieldsData, fieldsResource, 0);
 
         listView.setAdapter(simpleCursorAdapter);
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                updateTodo(id);
+            }
+        });
+    }
+
+    private void updateTodo(long id) {
+        Intent intent = new Intent(TodosListActivity.this, TodoDetailActivity.class);
+        Uri todoUri = Uri.parse(TodoContentProvider.CONTENT_URI + "/" + id);
+        intent.putExtra(TodoContentProvider.CONTENT_ITEM_TYPE, todoUri);
+        startActivity(intent);
     }
 
     @Override
@@ -77,6 +111,7 @@ public class TodosListActivity extends ActionBarActivity
     @Override
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
         String[] projection = {
+                // must include the _id column fot the loader to work
                 TodoDatabaseHelper.TodoTable.COLUMN_ID,
                 TodoDatabaseHelper.TodoTable.COLUMN_SUMMARY
         };

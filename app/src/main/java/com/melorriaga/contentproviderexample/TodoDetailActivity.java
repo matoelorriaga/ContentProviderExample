@@ -1,6 +1,7 @@
 package com.melorriaga.contentproviderexample;
 
 import android.content.ContentValues;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
@@ -21,8 +22,6 @@ public class TodoDetailActivity extends ActionBarActivity {
     private EditText summaryEditText;
     private EditText descriptionEditText;
 
-    private Button button;
-
     private Uri todoUri;
 
     @Override
@@ -34,33 +33,85 @@ public class TodoDetailActivity extends ActionBarActivity {
         summaryEditText = (EditText) findViewById(R.id.todo_summary);
         descriptionEditText = (EditText) findViewById(R.id.todo_description);
 
-        button = (Button) findViewById(R.id.todo_save_or_update_button);
+        // check for extras (update scenario)
+        todoUri = null;
+        Bundle extras = getIntent().getExtras();
+        if (extras != null) {
+            todoUri = extras.getParcelable(TodoContentProvider.CONTENT_ITEM_TYPE);
+            if (todoUri != null) {
+                loadTodoData(todoUri);
+            }
+        }
+
+        Button button = (Button) findViewById(R.id.todo_save_or_update_button);
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                saveTodo();
+                if (summaryEditText.getText().length() == 0 ||
+                        descriptionEditText.getText().length() == 0) {
+                    Toast.makeText(TodoDetailActivity.this, R.string.fill_fields,
+                            Toast.LENGTH_SHORT).show();
+                } else {
+                    saveOrUpdateTodo();
+                }
             }
         });
+        if (todoUri != null) {
+            button.setText(R.string.todo_update_button);
+        }
     }
 
-    private void saveTodo() {
+    private void loadTodoData(Uri todoUri) {
+        String[] projection = {
+                TodoDatabaseHelper.TodoTable.COLUMN_CATEGORY,
+                TodoDatabaseHelper.TodoTable.COLUMN_SUMMARY,
+                TodoDatabaseHelper.TodoTable.COLUMN_DESCRIPTION
+        };
+        Cursor cursor = getContentResolver().query(todoUri, projection, null, null, null);
+        if (cursor != null) {
+            cursor.moveToFirst();
+
+            String category = cursor.getString(cursor.getColumnIndex(
+                    TodoDatabaseHelper.TodoTable.COLUMN_CATEGORY));
+            for (int i = 0; i < categorySpinner.getCount(); i++) {
+                String item = (String) categorySpinner.getItemAtPosition(i);
+                if (item.equalsIgnoreCase(category)) {
+                    categorySpinner.setSelection(i);
+                    break;
+                }
+            }
+
+            String summary = cursor.getString(cursor.getColumnIndex(
+                    TodoDatabaseHelper.TodoTable.COLUMN_SUMMARY));
+            summaryEditText.setText(summary);
+
+            String description = cursor.getString(cursor.getColumnIndex(
+                    TodoDatabaseHelper.TodoTable.COLUMN_DESCRIPTION));
+            descriptionEditText.setText(description);
+
+            cursor.close();
+        }
+    }
+
+    private void saveOrUpdateTodo() {
         String category = (String) categorySpinner.getSelectedItem();
         String summary = summaryEditText.getText().toString();
         String description = descriptionEditText.getText().toString();
 
-        if (summary.length() != 0 && description.length() != 0) {
+        ContentValues values = new ContentValues();
+        values.put(TodoDatabaseHelper.TodoTable.COLUMN_CATEGORY, category);
+        values.put(TodoDatabaseHelper.TodoTable.COLUMN_SUMMARY, summary);
+        values.put(TodoDatabaseHelper.TodoTable.COLUMN_DESCRIPTION, description);
 
-            ContentValues values = new ContentValues();
-            values.put(TodoDatabaseHelper.TodoTable.COLUMN_CATEGORY, category);
-            values.put(TodoDatabaseHelper.TodoTable.COLUMN_SUMMARY, summary);
-            values.put(TodoDatabaseHelper.TodoTable.COLUMN_DESCRIPTION, description);
-
+        if (todoUri == null) {
+            // save scenario
             getContentResolver().insert(TodoContentProvider.CONTENT_URI, values);
-
-            finish();
         } else {
-            Toast.makeText(this, "Fill the fields", Toast.LENGTH_SHORT).show();
+            // update scenario
+            getContentResolver().update(todoUri, values, null, null);
         }
+
+        finish();
     }
 
     @Override

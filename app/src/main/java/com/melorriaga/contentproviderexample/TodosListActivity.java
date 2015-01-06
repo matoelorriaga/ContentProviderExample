@@ -5,10 +5,14 @@ import android.content.CursorLoader;
 import android.content.Intent;
 import android.content.Loader;
 import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
+import android.view.ContextMenu;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
 
@@ -18,9 +22,8 @@ import com.melorriaga.contentproviderexample.database.TodoDatabaseHelper;
 public class TodosListActivity extends ActionBarActivity
         implements LoaderManager.LoaderCallbacks<Cursor> {
 
+    private SimpleCursorAdapter simpleCursorAdapter;
     private ListView listView;
-
-    private SimpleCursorAdapter adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,22 +31,53 @@ public class TodosListActivity extends ActionBarActivity
         setContentView(R.layout.todos_list_activity);
 
         listView = (ListView) findViewById(R.id.todo_list);
+        registerForContextMenu(listView);
 
-        fillData();
+        loadData();
     }
 
-    private void fillData() {
-        String[] from = {
+    @Override
+    public void onCreateContextMenu(ContextMenu menu, View v,
+                                    ContextMenu.ContextMenuInfo menuInfo) {
+        super.onCreateContextMenu(menu, v, menuInfo);
+        menu.add(R.string.todo_delete_menu_option);
+    }
+
+    @Override
+    public boolean onContextItemSelected(MenuItem item) {
+        AdapterView.AdapterContextMenuInfo menuInfo =
+                (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
+        Uri todoUri = Uri.parse(TodoContentProvider.CONTENT_URI + "/" + menuInfo.id);
+        getContentResolver().delete(todoUri, null, null);
+        return true;
+    }
+
+    private void loadData() {
+        String[] fieldsData = {
                 TodoDatabaseHelper.TodoTable.COLUMN_SUMMARY
         };
-        int[] to = {
+        int[] fieldsResource = {
                 R.id.todo_list_item
         };
 
         getLoaderManager().initLoader(0, null, this);
-        adapter = new SimpleCursorAdapter(this, R.layout.todo_list_item, null, from, to, 0);
+        simpleCursorAdapter = new SimpleCursorAdapter(this,
+                R.layout.todo_list_item, null, fieldsData, fieldsResource, 0);
 
-        listView.setAdapter(adapter);
+        listView.setAdapter(simpleCursorAdapter);
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                updateTodo(id);
+            }
+        });
+    }
+
+    private void updateTodo(long id) {
+        Intent intent = new Intent(TodosListActivity.this, TodoDetailActivity.class);
+        Uri todoUri = Uri.parse(TodoContentProvider.CONTENT_URI + "/" + id);
+        intent.putExtra(TodoContentProvider.CONTENT_ITEM_TYPE, todoUri);
+        startActivity(intent);
     }
 
     @Override
@@ -62,14 +96,14 @@ public class TodosListActivity extends ActionBarActivity
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_create) {
-            createTodo();
+            openCreateTodoActivity();
             return true;
         }
 
         return super.onOptionsItemSelected(item);
     }
 
-    private void createTodo() {
+    private void openCreateTodoActivity() {
         Intent intent = new Intent(TodosListActivity.this, TodoDetailActivity.class);
         startActivity(intent);
     }
@@ -77,22 +111,22 @@ public class TodosListActivity extends ActionBarActivity
     @Override
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
         String[] projection = {
+                // must include the _id column fot the loader to work
                 TodoDatabaseHelper.TodoTable.COLUMN_ID,
                 TodoDatabaseHelper.TodoTable.COLUMN_SUMMARY
         };
-        CursorLoader cursorLoader = new CursorLoader(this, TodoContentProvider.CONTENT_URI,
+        return new CursorLoader(this, TodoContentProvider.CONTENT_URI,
                 projection, null, null, null);
-        return cursorLoader;
     }
 
     @Override
     public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
-        adapter.swapCursor(data);
+        simpleCursorAdapter.swapCursor(data);
     }
 
     @Override
     public void onLoaderReset(Loader<Cursor> loader) {
-        adapter.swapCursor(null);
+        simpleCursorAdapter.swapCursor(null);
     }
 
 }

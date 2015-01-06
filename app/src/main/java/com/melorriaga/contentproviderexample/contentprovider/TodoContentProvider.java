@@ -11,34 +11,33 @@ import android.text.TextUtils;
 
 import com.melorriaga.contentproviderexample.database.TodoDatabaseHelper;
 
-import java.util.Arrays;
-import java.util.HashSet;
-
 public class TodoContentProvider extends ContentProvider {
 
     // database
     private TodoDatabaseHelper database;
 
-    // used by the UriMatcher
-    private static final int TODOS = 1;
-    private static final int TODO_ID = 2;
-
-    private static final String AUTHORITY = "com.melorriaga.contentproviderexample.contentprovider";
+    // the authority for this content provider
+    private static final String AUTHORITY = TodoContentProvider.class.getPackage().getName();
+    // the base path for this content provider
     private static final String BASE_PATH = "todos";
 
-    public static final Uri CONTENT_URI = Uri.parse(String.format(
-            "content://%s/%s",
-            AUTHORITY,
-            BASE_PATH));
+    // the uri for this content provider
+    public static final Uri CONTENT_URI = Uri.parse("content://" + AUTHORITY + "/" + BASE_PATH);
 
-    public static final String CONTENT_TYPE = ContentResolver.CURSOR_DIR_BASE_TYPE + "/todos";
-    public static final String CONTENT_ITEM_TYPE = ContentResolver.CURSOR_ITEM_BASE_TYPE + "/todo";
+    public static final String CONTENT_DIR_TYPE =
+            ContentResolver.CURSOR_DIR_BASE_TYPE + "/" + AUTHORITY + "." + BASE_PATH;
+    public static final String CONTENT_ITEM_TYPE =
+            ContentResolver.CURSOR_ITEM_BASE_TYPE + "/" + AUTHORITY + "." + BASE_PATH;
+
+    // used by the uri matcher
+    private static final int TODOS = 1;
+    private static final int TODOS_ID = 2;
 
     private static final UriMatcher URI_MATCHER = new UriMatcher(UriMatcher.NO_MATCH);
 
     static {
         URI_MATCHER.addURI(AUTHORITY, BASE_PATH, TODOS);
-        URI_MATCHER.addURI(AUTHORITY, BASE_PATH + "/#", TODO_ID);
+        URI_MATCHER.addURI(AUTHORITY, BASE_PATH + "/#", TODOS_ID);
     }
 
     @Override
@@ -48,43 +47,16 @@ public class TodoContentProvider extends ContentProvider {
     }
 
     @Override
-    public Cursor query(Uri uri, String[] projection, String selection,
-                        String[] selectionArgs, String sortOrder) {
-
-        // check if the caller has requested a column which does not exists
-        checkColumns(projection);
-
-        // use query builder
-        SQLiteQueryBuilder queryBuilder = new SQLiteQueryBuilder();
-        // set the table
-        queryBuilder.setTables(TodoDatabaseHelper.TodoTable.TABLE_TODO);
-
+    public String getType(Uri uri) {
         int uriType = URI_MATCHER.match(uri);
         switch (uriType) {
             case TODOS:
-                break;
-            case TODO_ID:
-                // add the 'where' condition
-                queryBuilder.appendWhere(TodoDatabaseHelper.TodoTable.COLUMN_ID + " = "
-                        + uri.getLastPathSegment());
-                break;
+                return CONTENT_DIR_TYPE;
+            case TODOS_ID:
+                return CONTENT_ITEM_TYPE;
             default:
-                throw new IllegalArgumentException("Unknown URI: " + uri.toString());
+                return null;
         }
-
-        // perform the query
-        Cursor cursor = queryBuilder.query(database.getReadableDatabase(), projection, selection,
-                selectionArgs, null, null, sortOrder);
-
-        // make sure that potential listeners are getting notified
-        cursor.setNotificationUri(getContext().getContentResolver(), uri);
-
-        return cursor;
-    }
-
-    @Override
-    public String getType(Uri uri) {
-        return null;
     }
 
     @Override
@@ -99,13 +71,89 @@ public class TodoContentProvider extends ContentProvider {
                         TodoDatabaseHelper.TodoTable.TABLE_TODO, null, values);
                 break;
             default:
-                throw new IllegalArgumentException("Unknown URI: " + uri.toString());
+                break;
         }
 
+        // notify registered observers
         getContext().getContentResolver().notifyChange(uri, null);
 
         // return the uri for the newly inserted item
         return Uri.parse(BASE_PATH + "/" + id);
+    }
+
+    @Override
+    public Cursor query(Uri uri, String[] projection, String selection,
+                        String[] selectionArgs, String sortOrder) {
+
+        // use query builder
+        SQLiteQueryBuilder queryBuilder = new SQLiteQueryBuilder();
+        // set the table
+        queryBuilder.setTables(TodoDatabaseHelper.TodoTable.TABLE_TODO);
+
+        int uriType = URI_MATCHER.match(uri);
+        switch (uriType) {
+            case TODOS:
+                break;
+            case TODOS_ID:
+                // add the 'where' condition
+                queryBuilder.appendWhere(TodoDatabaseHelper.TodoTable.COLUMN_ID + " = "
+                        + uri.getLastPathSegment());
+                break;
+            default:
+                break;
+        }
+
+        // perform the query
+        Cursor cursor = queryBuilder.query(database.getReadableDatabase(), projection,
+                selection, selectionArgs, null, null, sortOrder);
+
+        // make sure that potential listeners are getting notified
+        cursor.setNotificationUri(getContext().getContentResolver(), uri);
+
+        // return a cursor with the results of the query
+        return cursor;
+    }
+
+    @Override
+    public int update(Uri uri, ContentValues values, String selection, String[] selectionArgs) {
+
+        int rowsUpdated = 0;
+
+        int uriType = URI_MATCHER.match(uri);
+        switch (uriType) {
+            case TODOS:
+                rowsUpdated = database.getWritableDatabase().update(
+                        TodoDatabaseHelper.TodoTable.TABLE_TODO,
+                        values,
+                        selection,
+                        selectionArgs);
+                break;
+            case TODOS_ID:
+                String id = uri.getLastPathSegment();
+                if (TextUtils.isEmpty(selection)) {
+                    rowsUpdated = database.getWritableDatabase().update(
+                            TodoDatabaseHelper.TodoTable.TABLE_TODO,
+                            values,
+                            TodoDatabaseHelper.TodoTable.COLUMN_ID + " = " + id,
+                            null);
+                } else {
+                    rowsUpdated = database.getWritableDatabase().update(
+                            TodoDatabaseHelper.TodoTable.TABLE_TODO,
+                            values,
+                            TodoDatabaseHelper.TodoTable.COLUMN_ID + " = " + id
+                                    + " and " + selection,
+                            selectionArgs);
+                }
+                break;
+            default:
+                break;
+        }
+
+        // notify registered observers
+        getContext().getContentResolver().notifyChange(uri, null);
+
+        // return the number of updated rows
+        return rowsUpdated;
     }
 
     @Override
@@ -117,9 +165,11 @@ public class TodoContentProvider extends ContentProvider {
         switch (uriType) {
             case TODOS:
                 rowsDeleted = database.getWritableDatabase().delete(
-                        TodoDatabaseHelper.TodoTable.TABLE_TODO, selection, selectionArgs);
+                        TodoDatabaseHelper.TodoTable.TABLE_TODO,
+                        selection,
+                        selectionArgs);
                 break;
-            case TODO_ID:
+            case TODOS_ID:
                 String id = uri.getLastPathSegment();
                 if (TextUtils.isEmpty(selection)) {
                     rowsDeleted = database.getWritableDatabase().delete(
@@ -135,67 +185,14 @@ public class TodoContentProvider extends ContentProvider {
                 }
                 break;
             default:
-                throw new IllegalArgumentException("Unknown URI: " + uri.toString());
+                break;
         }
 
+        // notify registered observers
         getContext().getContentResolver().notifyChange(uri, null);
 
         // return the number of deleted rows
         return rowsDeleted;
-    }
-
-    @Override
-    public int update(Uri uri, ContentValues values, String selection, String[] selectionArgs) {
-        int rowsUpdated = 0;
-
-        int uriType = URI_MATCHER.match(uri);
-        switch (uriType) {
-            case TODOS:
-                rowsUpdated = database.getWritableDatabase().update(
-                        TodoDatabaseHelper.TodoTable.TABLE_TODO, values, selection, selectionArgs);
-                break;
-            case TODO_ID:
-                String id = uri.getLastPathSegment();
-                if (TextUtils.isEmpty(selection)) {
-                    rowsUpdated = database.getWritableDatabase().update(
-                            TodoDatabaseHelper.TodoTable.TABLE_TODO,
-                            values,
-                            TodoDatabaseHelper.TodoTable.COLUMN_ID + " = " + id,
-                            null);
-                } else {
-                    rowsUpdated = database.getWritableDatabase().update(
-                            TodoDatabaseHelper.TodoTable.TABLE_TODO,
-                            values,
-                            TodoDatabaseHelper.TodoTable.COLUMN_ID + " = " + id
-                                    + " and " + selection,
-                            selectionArgs);
-                }
-                break;
-            default:
-                throw new IllegalArgumentException("Unknown URI: " + uri.toString());
-        }
-
-        getContext().getContentResolver().notifyChange(uri, null);
-
-        // return the number of updated rows
-        return rowsUpdated;
-    }
-
-    private void checkColumns(String[] projection) {
-        String[] available = {
-                TodoDatabaseHelper.TodoTable.COLUMN_ID,
-                TodoDatabaseHelper.TodoTable.COLUMN_CATEGORY,
-                TodoDatabaseHelper.TodoTable.COLUMN_SUMMARY,
-                TodoDatabaseHelper.TodoTable.COLUMN_DESCRIPTION
-        };
-        if (projection != null) {
-            HashSet<String> requestedColumns = new HashSet<>(Arrays.asList(projection));
-            HashSet<String> availableColumns = new HashSet<>(Arrays.asList(available));
-            // check if all columns which are requested are available
-            if (!availableColumns.containsAll(requestedColumns)) {
-                throw new IllegalArgumentException("Unknown columns in projection");
-            }
-        }
     }
 
 }

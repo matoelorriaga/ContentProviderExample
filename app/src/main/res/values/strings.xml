@@ -17,4 +17,8 @@
     <string name="todo_save_button">Save</string>
     <string name="todo_update_button">Update</string>
 
+    <string name="todo_delete_menu_option">Delete</string>
+
+    <string name="fill_fields">Please fill the fields&#8230;</string>
+
 </resources>
